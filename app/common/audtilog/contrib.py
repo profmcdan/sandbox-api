@@ -8,23 +8,19 @@ from ipware import get_client_ip as ipware_get_client_ip
 logger = logging.getLogger(__name__)
 
 
-SENSITIVE_KEYS = [
+SENSITIVE_KEYS = {
     "password",
     "token",
     "access",
     "refresh",
-    "Authorization",
+    "authorization",
     "pin",
     "tx_pin",
-]
+}
 
-logger = logging.getLogger(__name__)
-# settings.configure()
-
-if hasattr(settings, "API_LOGGER_EXCLUDE_KEYS"):
-    if type(settings.DRF_API_LOGGER_EXCLUDE_KEYS) in (list, tuple):
-        SENSITIVE_KEYS.extend(settings.DRF_API_LOGGER_EXCLUDE_KEYS)
-
+SENSITIVE_KEYS.update(
+    {key.lower() for key in settings.DRF_API_LOGGER_EXCLUDE_KEYS}
+)
 
 def get_headers(request=None):
     """
@@ -77,41 +73,56 @@ def get_client_ip(request) -> str:
         return ""
 
 
-# def get_client_ip(request):
-#     try:
-#         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-#         if x_forwarded_for:
-#             ip = x_forwarded_for.split(",")[0]
-#         else:
-#             ip = request.META.get("REMOTE_ADDR")
-#         return ip
-#     except Exception as ex:
-#         logger.error(ex)
-#         return ""
 
 
 def mask_sensitive_data(data, mask_api_parameters=True):
     mask_value = "***FILTERED***"
-    # Check if data is a dictionary
+
+    # Handle dictionaries
     if isinstance(data, dict):
-        # Create a copy of the dictionary to avoid modifying the original
         masked_data = {}
+
         for key, value in data.items():
-            # If the key is in sensitive fields, mask the value
-            if key in SENSITIVE_KEYS:
+            normalized_key = str(key).lower()
+
+            if normalized_key in SENSITIVE_KEYS:
                 masked_data[key] = mask_value
             else:
-                # Recursively process nested structures
-                masked_data[key] = mask_sensitive_data(value, mask_api_parameters)
+                masked_data[key] = mask_sensitive_data(
+                    value,
+                    mask_api_parameters,
+                )
+
         return masked_data
 
-    # If data is a list, apply the function to each item in the list
+    # Handle lists
     elif isinstance(data, list):
-        return [mask_sensitive_data(item, mask_api_parameters) for item in data]
+        return [
+            mask_sensitive_data(item, mask_api_parameters)
+            for item in data
+        ]
 
-    # For other data types, return the data as is
-    else:
+    # Handle strings (query params / raw body)
+    elif isinstance(data, str) and mask_api_parameters:
+
+        for sensitive_key in SENSITIVE_KEYS:
+
+            data = re.sub(
+                rf"(?i)({re.escape(sensitive_key)}=)([^&\s]+)",
+                r"\1***FILTERED***",
+                data,
+            )
+
+            # JSON style masking
+            data = re.sub(
+                rf'(?i)("?{re.escape(sensitive_key)}"?\s*:\s*")([^"]+)(")',
+                r'\1***FILTERED***\3',
+                data,
+            )
+
         return data
+
+    return data
 
 
 def mask_sensitive_data_v1(data, mask_api_parameters=True):

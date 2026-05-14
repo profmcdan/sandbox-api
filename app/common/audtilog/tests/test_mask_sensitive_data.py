@@ -1,5 +1,5 @@
 import pytest
-from common.audtilog.contrib import mask_sensitive_data_v1 as mask_sensitive_data
+from common.audtilog.contrib import mask_sensitive_data
 
 SENSITIVE_KEYS = [
     "password",
