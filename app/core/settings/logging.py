@@ -62,8 +62,8 @@ LOGGING = {
     },
 }
 
-DEBUG = int(os.environ.get("DEBUG", 1))
-if not DEBUG:
+ENVIRONMENT_INSTANCE = os.environ.get("ENVIRONMENT_INSTANCE", 'prod')
+if not ENVIRONMENT_INSTANCE == 'prod':
     sentry_sdk.init(
         dsn=os.environ.get("SENTRY_DSN"),
         integrations=[
@@ -79,12 +79,9 @@ DRF_API_LOGGER_EXCLUDE_KEYS = [
     "tx_pin",
     "bvn",
     "nin",
-    "X-KMS-KEY",
     "Authorization",
     "transaction_pin",
 ]
-MONGODB_LOGGER_URL = os.getenv("MONGODB_LOGGER_URL")
-MONGODB_LOGGER_DATABASE = os.getenv("APP_NAME")
 
 # OpenSearch
 OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST")
@@ -95,4 +92,4 @@ OPENSEARCH_USERNAME = os.getenv("OPENSEARCH_USERNAME")
 OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD")
 OPENSEARCH_USE_SSL = False
 
-OPENSEARCH_INDEX = "sandbox-api"
+OPENSEARCH_INDEX_NAME = "sandbox-api"

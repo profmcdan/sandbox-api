@@ -30,12 +30,7 @@ client = OpenSearch(
     refresh=False,
 )
 
-INDEX_NAME = getattr(
-    settings,
-    "OPENSEARCH_INDEX",
-    settings.APP_NAME.lower(),
-)
-
+INDEX_NAME = settings.OPENSEARCH_INDEX_NAME
 
 def ensure_index_exists():
     if not client.indices.exists(index=INDEX_NAME):
