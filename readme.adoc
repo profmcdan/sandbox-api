@@ -1,0 +1,106 @@
+= Template API Microservice.
+Daniel Ale <d.ale@capitalsage.ng>
+3.0, April 03, 2025: API Microservice Readme...
+:toc:
+:icons: font
+:url-quickref: https://github.com/capitalsagetechnology/py-api-template
+
+TIP: Always read the doc. And remember to update the doc as soon as there is need for it to allow others have a smooth development experience.
+
+== Clone Repository
+
+Clone the repo
+
+[source,bash]
+----
+git clone https://github.com/capitalsagetechnology/py-api-template.git
+cd py-api-template
+----
+*Update the .env from the .env.sample* you can copy it
+
+== Setup Local Development Environment
+
+Setup your virtual environment using venv and poetry footnote:[Your local .venv setup may be slightly different depending on your operating system].
+
+We use uv package manager for the project, so you may need to install it if needed.
+https://docs.astral.sh/uv/[UV Guide]
+
+[source,bash]
+----
+uv python install 3.13
+uv python list
+uv venv
+source .venv/bin/activate
+uv sync
+----
+
+Enable Lint Checks
+[source,bash]
+----
+pre-commit install
+pre-commit run --all-files
+----
+
+== Run Code Locally
+
+Ensure that the latest version of docker desktop is installed on your local machine. This will also install docker compose alongside automatically. Follow this link to install docker https://docs.docker.com/desktop/install/mac-install[docker installation].
+
+The run the following command from the root of the application
+
+[source,bash]
+----
+docker compose up --build
+----
+
+_Access the API doc on http://localhost:60001/api/v1/doc[API Doc]_
+
+=== Run Unit Tests
+In order to run tests you need to do the following
+[source,bash]
+----
+docker compose run api pytest
+----
+
+Alternatively, you can following the following approach.
+----
+docker compose build
+docker compose run test
+----
+
+Note also that when you run ```docker compose up --build``` the test service also runs once. You can monitor from the logs
+
+=== Manage Migrations
+Whenever you make changes to models, you need to generate migrations locally before pushing your code to the repo. In order to generate migrations, kindly run the following command in another terminal window while your main app is also running
+
+[source,bash]
+----
+docker compose exec api python manage.py makemigrations
+docker compose exec api python manage.py migrate
+----
+
+== Access the Deployed Documentation
+Visit the deployed links below
+
+https://api.dev-auth.agencycentral.capitalsage.ng/api/v1/doc[Dev 1 API Doc]
+https://api.dev-auth.agencycentral.capitalsage.ng/admin/[Dev 1 Admin]
+https://dashboard.dev-auth.agencycentral.capitalsage.ng/[Celery Dashboard]
+
+
+== Other Related Codebases
+The other codebases that are related to this one are
+
+* https://github.com/random/random-api/[Another API]
+
+
+.Table Contributors
+|===
+|Name |Role |Email
+
+|Daniel Ale |SA |d.ale@capitalsage.ng
+
+|===
+
+[quote]
+____
+Happy Coding
+____

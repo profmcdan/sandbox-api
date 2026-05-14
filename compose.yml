@@ -1,0 +1,139 @@
+name: "sandbox-api"
+
+services:
+  db:
+    image: postgres:17-alpine
+    platform: linux/amd64
+    ports:
+      - "11432:5432"
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    command: python3 manage.py runserver 0.0.0.0:11000
+    volumes:
+      - ./app:/home/appuser/src
+    ports:
+      - "11000:11000"
+    scale: 1
+    env_file:
+      - ./.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    restart: always
+    depends_on:
+      - db
+      - redis
+
+  migrator:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    command: python3 manage.py migrate --no-input
+    volumes:
+      - ./app:/home/appuser/src
+    env_file:
+      - ./.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    depends_on:
+      - db
+
+  redis:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    # You might pin to a specific version instead of “latest”
+    entrypoint: ["dragonfly", "--force_epoll"]
+    ulimits:
+      memlock: -1
+    ports:
+      - "21379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+
+  celery:
+    build:
+      context: .
+      dockerfile: docker/celery/Dockerfile-celery
+    command: >
+      celery -A core worker
+      --loglevel=info
+      --queues=default_queue
+      --autoscale=${CELERY_AUTOSCALE_MAX:-8},${CELERY_AUTOSCALE_MIN:-4}
+      --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-500}
+      --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-4}
+      --hostname=default@%h
+    volumes:
+      - ./app:/home/appuser/src
+    env_file:
+      - ./.env
+    depends_on:
+      - api
+      - redis
+    restart: always
+    scale: 1
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: docker/celery/Dockerfile-celery
+    command: >
+      celery -A core beat
+      -l info
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./app:/home/appuser/src
+    env_file:
+      - ./.env
+    depends_on:
+      - api
+      - redis
+    restart: always
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/celery/Dockerfile-celery
+    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555
+    ports:
+      - "11555:5555"
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    env_file:
+      - ./.env
+    depends_on:
+      - api
+      - redis
+
+
+  test:
+    build:
+      context: .
+      dockerfile: docker/test/Dockerfile-test
+    command: pytest
+    volumes:
+      - ./app:/home/appuser/src
+    env_file:
+      - ./.env
+    environment:
+      DJANGO_SETTINGS_MODULE: core.settings_test
+    restart: no
+    depends_on:
+      - db
+      - redis
+
+
+volumes:
+  db-data:
+  redis-data:
